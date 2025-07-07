@@ -11,6 +11,81 @@ Class MainWindow
         InitializeComponent()
 
         ' Add any initialization after the InitializeComponent() call.
+
+        diffuseBrush = New SolidColorBrush(Colors.Gray)
+        diffuseMaterial = New DiffuseMaterial(diffuseBrush)
+        emissiveBrush = New SolidColorBrush(Colors.Gray)
+        emissiveMaterial = New EmissiveMaterial(emissiveBrush)
+
+        headlight = New DirectionalHeadLight() With {
+            .Brightness = 1.0
+        }
+
+        Dim addColorSlider As Action(Of String, Color, Action(Of Color)) =
+            Sub(name As String, initialColor As Color, update As Action(Of Color))
+                Dim stackPanel As New StackPanel()
+                Dim label As New Label() With {.Content = name}
+                Dim sliderR As New Slider() With {.Minimum = 0, .Maximum = 255, .Value = initialColor.R}
+                Dim sliderG As New Slider() With {.Minimum = 0, .Maximum = 255, .Value = initialColor.G}
+                Dim sliderB As New Slider() With {.Minimum = 0, .Maximum = 255, .Value = initialColor.B}
+                Dim checkbox As New CheckBox() With {
+                    .Content = "Single Color",
+                    .IsChecked = True
+                }
+                Dim separator As New Separator() With {.Margin = New Thickness(10)}
+
+                AddHandler checkbox.Checked, Sub()
+                                                 sliderG.Value = sliderR.Value
+                                                 sliderB.Value = sliderR.Value
+                                             End Sub
+
+                Dim sliderValueChanged = Sub(sender As Object, e As RoutedPropertyChangedEventArgs(Of Double))
+                                             Dim slider = DirectCast(sender, Slider)
+                                             If checkbox.IsChecked Then
+                                                 sliderR.Value = slider.Value
+                                                 sliderG.Value = slider.Value
+                                                 sliderB.Value = slider.Value
+                                             End If
+                                             Dim newColor As Color = Color.FromArgb(255, CByte(sliderR.Value), CByte(sliderG.Value), CByte(sliderB.Value))
+                                             update(newColor)
+                                         End Sub
+
+                AddHandler sliderR.ValueChanged, sliderValueChanged
+                AddHandler sliderG.ValueChanged, sliderValueChanged
+                AddHandler sliderB.ValueChanged, sliderValueChanged
+
+                stackPanel.Children.Add(label)
+                stackPanel.Children.Add(sliderR)
+                stackPanel.Children.Add(sliderG)
+                stackPanel.Children.Add(sliderB)
+                stackPanel.Children.Add(checkbox)
+                stackPanel.Children.Add(separator)
+                Tools.Children.Add(stackPanel)
+            End Sub
+
+        addColorSlider("Diffuse (Material)", diffuseMaterial.Color, Sub(c) diffuseMaterial.Color = c)
+        addColorSlider("Diffuse (Brush)", diffuseBrush.Color, Sub(c) diffuseBrush.Color = c)
+        addColorSlider("Emissive (Material)", emissiveMaterial.Color, Sub(c) emissiveMaterial.Color = c)
+        addColorSlider("Emissive (Brush)", emissiveBrush.Color, Sub(c) emissiveBrush.Color = c)
+
+        If True Then
+            Dim stackPanel As New StackPanel()
+            Dim label As New Label() With {.Content = "Brightness"}
+            Dim slider As New Slider() With {
+                .Minimum = 0,
+                .Maximum = 1,
+                .Value = headlight.Brightness
+            }
+            Dim separator As New Separator() With {.Margin = New Thickness(10)}
+
+            AddHandler slider.ValueChanged, Sub() headlight.Brightness = slider.Value
+
+            stackPanel.Children.Add(label)
+            stackPanel.Children.Add(slider)
+            stackPanel.Children.Add(separator)
+            Tools.Children.Add(stackPanel)
+        End If
+
         Dim w = 152.0
         Dim f = 64.0
         Dim l = 18.5
@@ -83,10 +158,6 @@ Class MainWindow
         quad(9, 10, 22, 21)
         quad(10, 11, 23, 22)
         quad(11, 0, 12, 23)
-
-        diffuseMaterial = New DiffuseMaterial(New SolidColorBrush(GetDiffuse()))
-
-        emissiveMaterial = New EmissiveMaterial(New SolidColorBrush(GetEmissive()))
 
         Dim material As New MaterialGroup()
         material.Children.Add(diffuseMaterial)
@@ -166,15 +237,14 @@ Class MainWindow
 
         'Viewport.Children.Add(New SunLight())
 
-        headlight = New DirectionalHeadLight() With {
-            .Brightness = SliderBrightness.Value
-        }
         Viewport.Children.Add(headlight)
     End Sub
 
     Private headlight As DirectionalHeadLight
     Private diffuseMaterial As DiffuseMaterial
     Private emissiveMaterial As EmissiveMaterial
+    Private diffuseBrush As SolidColorBrush
+    Private emissiveBrush As SolidColorBrush
 
     Private Function P3(x As Double, y As Double, z As Double) As Point3D
         Return New Point3D(x, y, z)
@@ -191,51 +261,7 @@ Class MainWindow
         End If
     End Sub
 
-    Private Sub SliderColor_ValueChanged(sender As Object, e As RoutedPropertyChangedEventArgs(Of Double))
-        Dim slider = DirectCast(sender, Slider)
-
-        If diffuseMaterial IsNot Nothing Then
-            If ChkSingleColor.IsChecked AndAlso (slider Is SliderDiffuseR OrElse slider Is SliderDiffuseG OrElse slider Is SliderDiffuseB) Then
-                SliderDiffuseR.Value = slider.Value
-                SliderDiffuseG.Value = slider.Value
-                SliderDiffuseB.Value = slider.Value
-            End If
-            diffuseMaterial.Color = GetDiffuse()
-        End If
-
-        If emissiveMaterial IsNot Nothing Then
-            If ChkSingleColor.IsChecked AndAlso (slider Is SliderEmissiveR OrElse slider Is SliderEmissiveG OrElse slider Is SliderEmissiveB) Then
-                SliderEmissiveR.Value = slider.Value
-                SliderEmissiveG.Value = slider.Value
-                SliderEmissiveB.Value = slider.Value
-            End If
-            emissiveMaterial.Color = GetEmissive()
-        End If
-    End Sub
-
-    Private Function GetDiffuse() As Color
-        Return Color.FromArgb(255, CByte(SliderDiffuseR.Value), CByte(SliderDiffuseG.Value), CByte(SliderDiffuseB.Value))
-    End Function
-
-    Private Function GetEmissive() As Color
-        Return Color.FromArgb(255, CByte(SliderEmissiveR.Value), CByte(SliderEmissiveG.Value), CByte(SliderEmissiveB.Value))
-    End Function
-
     Private Sub Window_Loaded(sender As Object, e As RoutedEventArgs)
         Viewport.ZoomExtents()
-    End Sub
-
-    Private Sub ChkSingleColor_Checked(sender As Object, e As RoutedEventArgs)
-        SliderDiffuseG.Value = SliderDiffuseR.Value
-        SliderDiffuseB.Value = SliderDiffuseR.Value
-
-        SliderEmissiveG.Value = SliderEmissiveR.Value
-        SliderEmissiveB.Value = SliderEmissiveR.Value
-    End Sub
-
-    Private Sub SliderBrightness_ValueChanged(sender As Object, e As RoutedPropertyChangedEventArgs(Of Double))
-        If headlight IsNot Nothing Then
-            headlight.Brightness = SliderBrightness.Value
-        End If
     End Sub
 End Class
