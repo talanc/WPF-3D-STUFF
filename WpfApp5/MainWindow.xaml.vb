@@ -21,18 +21,22 @@ Class MainWindow
             .Brightness = 1.0
         }
 
+        Dim createSeparator = Function() New Separator() With {.Margin = New Thickness(10)}
+
         Dim addColorSlider As Action(Of String, Color, Action(Of Color)) =
             Sub(name As String, initialColor As Color, update As Action(Of Color))
+                Dim createSlider = Function(value As Byte) New Slider() With {.Minimum = 0, .Maximum = 255, .Value = value}
+
                 Dim stackPanel As New StackPanel()
                 Dim label As New Label() With {.Content = name}
-                Dim sliderR As New Slider() With {.Minimum = 0, .Maximum = 255, .Value = initialColor.R}
-                Dim sliderG As New Slider() With {.Minimum = 0, .Maximum = 255, .Value = initialColor.G}
-                Dim sliderB As New Slider() With {.Minimum = 0, .Maximum = 255, .Value = initialColor.B}
+                Dim sliderR = createSlider(initialColor.R)
+                Dim sliderG = createSlider(initialColor.G)
+                Dim sliderB = createSlider(initialColor.B)
                 Dim checkbox As New CheckBox() With {
                     .Content = "Single Color",
                     .IsChecked = True
                 }
-                Dim separator As New Separator() With {.Margin = New Thickness(10)}
+                Dim separator = createSeparator()
 
                 AddHandler checkbox.Checked, Sub()
                                                  sliderG.Value = sliderR.Value
@@ -76,7 +80,7 @@ Class MainWindow
                 .Maximum = 1,
                 .Value = headlight.Brightness
             }
-            Dim separator As New Separator() With {.Margin = New Thickness(10)}
+            Dim separator = createSeparator()
 
             AddHandler slider.ValueChanged, Sub() headlight.Brightness = slider.Value
 
