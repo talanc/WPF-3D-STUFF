@@ -90,36 +90,121 @@ Class MainWindow
             Tools.Children.Add(stackPanel)
         End If
 
-        Dim w = 152.0
-        Dim f = 64.0
-        Dim l = 18.5
-        Dim t = 2.4
+        Dim mesh As New MeshGeometry3D()
 
-        Dim len = 500.0
+        Dim material As New MaterialGroup()
+        material.Children.Add(diffuseMaterial)
+        material.Children.Add(emissiveMaterial)
 
+        Dim model As New GeometryModel3D With {
+            .Geometry = mesh,
+            .Material = material
+        }
+
+        Dim lines As New LinesVisual3D With {
+            .Thickness = 1
+        }
+
+        Dim col1Mat = Matrix3D.Identity
+        col1Mat.Translate(V3(0, -152 / 2, 0))
+
+        Dim col2Mat = Matrix3D.Identity
+        col2Mat.Translate(V3(0, 500 + 152 / 2, 0))
+
+        Dim beamMat = Matrix3D.Identity
+        beamMat.Rotate(New Quaternion(V3(1, 0, 0), -90))
+        beamMat.Translate(V3(0, 0, 500 - 152 / 2))
+
+        For Each mat In {col1Mat, col2Mat, beamMat}
+            AddCee(mesh, lines.Points, mat, 152, 64, 18.5, 2.4, 500)
+        Next
+
+        Dim visual As New ModelVisual3D With {
+            .Content = model
+        }
+
+        Viewport.Children.Add(visual)
+
+        Viewport.Children.Add(lines)
+
+        Viewport.Children.Add(headlight)
+    End Sub
+
+    Private headlight As DirectionalHeadLight
+    Private diffuseMaterial As DiffuseMaterial
+    Private emissiveMaterial As EmissiveMaterial
+    Private diffuseBrush As SolidColorBrush
+    Private emissiveBrush As SolidColorBrush
+
+    Private Sub AddCee(mesh As MeshGeometry3D, linePoints As Point3DCollection, mat As Matrix3D, w As Double, f As Double, l As Double, t As Double, len As Double)
         Dim hf = f / 2
         Dim hw = w / 2
 
-        Dim mesh As New MeshGeometry3D()
+        Dim positions As Point3D() = {
+            P3(+hf, +hw - l, 0),
+            P3(+hf, +hw, 0),
+            P3(-hf, +hw, 0),
+            P3(-hf, -hw, 0),
+            P3(+hf, -hw, 0),
+            P3(+hf, -hw + l, 0),
+            P3(+hf - t, -hw + l, 0),
+            P3(+hf - t, -hw + t, 0),
+            P3(-hf + t, -hw + t, 0),
+            P3(-hf + t, +hw - t, 0),
+            P3(+hf - t, +hw - t, 0),
+            P3(+hf - t, +hw - l, 0),
+            P3(+hf, +hw - l, len),
+            P3(+hf, +hw, len),
+            P3(-hf, +hw, len),
+            P3(-hf, -hw, len),
+            P3(+hf, -hw, len),
+            P3(+hf, -hw + l, len),
+            P3(+hf - t, -hw + l, len),
+            P3(+hf - t, -hw + t, len),
+            P3(-hf + t, -hw + t, len),
+            P3(-hf + t, +hw - t, len),
+            P3(+hf - t, +hw - t, len),
+            P3(+hf - t, +hw - l, len)
+        }
 
-        Dim positions As New List(Of Point3D)
+        Dim lineOffset = 0.3
+        Dim linePositions = positions.ToList()
+        For i = 0 To linePositions.Count - 1
+            Dim newPos = linePositions(i)
 
-        positions.Add(P3(+hf, +hw - l, 0))
-        positions.Add(P3(+hf, +hw, 0))
-        positions.Add(P3(-hf, +hw, 0))
-        positions.Add(P3(-hf, -hw, 0))
-        positions.Add(P3(+hf, -hw, 0))
-        positions.Add(P3(+hf, -hw + l, 0))
+            Select Case newPos.X
+                Case -hf, +hf - t
+                    newPos.X -= lineOffset
+                Case +hf, -hf + t
+                    newPos.X += lineOffset
+                Case Else
+                    Throw New InvalidOperationException($"Unknown X: {newPos.X}")
+            End Select
 
-        positions.Add(positions(5) + V3(-t, 0, 0))
-        positions.Add(positions(4) + V3(-t, +t, 0))
-        positions.Add(positions(3) + V3(+t, +t, 0))
-        positions.Add(positions(2) + V3(+t, -t, 0))
-        positions.Add(positions(1) + V3(-t, -t, 0))
-        positions.Add(positions(0) + V3(-t, 0, 0))
+            Select Case newPos.Y
+                Case -hw, +hw - l, +hw - t
+                    newPos.Y -= lineOffset
+                Case +hw, -hw + l, -hw + t
+                    newPos.Y += lineOffset
+                Case Else
+                    Throw New InvalidOperationException($"Unknown Y: {newPos.Y}")
+            End Select
 
-        For i = 0 To 11
-            positions.Add(positions(i) + V3(0, 0, len))
+            Select Case newPos.Z
+                Case 0
+                    newPos.Z -= lineOffset
+                Case len
+                    newPos.Z += lineOffset
+                Case Else
+                    Throw New InvalidOperationException($"Unknown Z: {newPos.Z}")
+            End Select
+
+            linePositions(i) = newPos
+        Next
+
+        For i = 0 To positions.Length - 1
+            positions(i) = mat.Transform(positions(i))
+            linePositions(i) = mat.Transform(linePositions(i))
         Next
 
         Dim tri =
@@ -163,64 +248,10 @@ Class MainWindow
         quad(10, 11, 23, 22)
         quad(11, 0, 12, 23)
 
-        Dim material As New MaterialGroup()
-        material.Children.Add(diffuseMaterial)
-        material.Children.Add(emissiveMaterial)
-
-        Dim model As New GeometryModel3D With {
-            .Geometry = mesh,
-            .Material = material
-        }
-
-        Dim visual As New ModelVisual3D With {
-            .Content = model
-        }
-
-        Viewport.Children.Add(visual)
-
-        Dim lines As New LinesVisual3D With {
-            .Thickness = 1
-        }
-
-        Dim lineOffset = 0.3
-        Dim linePositions = positions.ToList()
-        For i = 0 To linePositions.Count - 1
-            Dim newPos = linePositions(i)
-
-            Select Case newPos.X
-                Case -hf, +hf - t
-                    newPos.X -= lineOffset
-                Case +hf, -hf + t
-                    newPos.X += lineOffset
-                Case Else
-                    Throw New InvalidOperationException($"Unknown X: {newPos.X}")
-            End Select
-
-            Select Case newPos.Y
-                Case -hw, +hw - l, +hw - t
-                    newPos.Y -= lineOffset
-                Case +hw, -hw + l, -hw + t
-                    newPos.Y += lineOffset
-                Case Else
-                    Throw New InvalidOperationException($"Unknown Y: {newPos.Y}")
-            End Select
-
-            Select Case newPos.Z
-                Case 0
-                    newPos.Z -= lineOffset
-                Case len
-                    newPos.Z += lineOffset
-                Case Else
-                    Throw New InvalidOperationException($"Unknown Z: {newPos.Z}")
-            End Select
-
-            linePositions(i) = newPos
-        Next
-
         Dim line =
             Sub(a As Integer, b As Integer)
-                lines.Points.Add(linePositions(a))
-                lines.Points.Add(linePositions(b))
+                linePoints.Add(linePositions(a))
+                linePoints.Add(linePositions(b))
             End Sub
 
         Dim lineRangeLoop =
@@ -236,19 +267,7 @@ Class MainWindow
         For i = 0 To 11
             line(i, i + 12)
         Next
-
-        Viewport.Children.Add(lines)
-
-        'Viewport.Children.Add(New SunLight())
-
-        Viewport.Children.Add(headlight)
     End Sub
-
-    Private headlight As DirectionalHeadLight
-    Private diffuseMaterial As DiffuseMaterial
-    Private emissiveMaterial As EmissiveMaterial
-    Private diffuseBrush As SolidColorBrush
-    Private emissiveBrush As SolidColorBrush
 
     Private Function P3(x As Double, y As Double, z As Double) As Point3D
         Return New Point3D(x, y, z)
