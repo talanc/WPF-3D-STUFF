@@ -96,9 +96,10 @@ Class MainWindow
         material.Children.Add(diffuseMaterial)
         material.Children.Add(emissiveMaterial)
 
-        Dim model As New GeometryModel3D With {
-            .Geometry = mesh,
-            .Material = material
+        Dim model As New GeometryModel3D(mesh, material)
+
+        Dim visual As New ModelVisual3D With {
+            .Content = model
         }
 
         Dim lines As New LinesVisual3D With {
@@ -119,14 +120,8 @@ Class MainWindow
             AddCee(mesh, lines.Points, mat, 152, 64, 18.5, 2.4, 500)
         Next
 
-        Dim visual As New ModelVisual3D With {
-            .Content = model
-        }
-
         Viewport.Children.Add(visual)
-
         Viewport.Children.Add(lines)
-
         Viewport.Children.Add(headlight)
     End Sub
 
