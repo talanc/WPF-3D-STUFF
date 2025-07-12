@@ -24,16 +24,29 @@ Class MainWindow
         Dim numTrisLabel As New Label()
 
         Dim createSeparator = Function() New Separator() With {.Margin = New Thickness(10)}
+        Dim createByteSlider = Function(value As Byte) New Slider() With {.Minimum = 0, .Maximum = 255, .Value = value}
 
-        Dim addColorSlider As Action(Of String, Color, Action(Of Color)) =
-            Sub(name As String, initialColor As Color, update As Action(Of Color))
-                Dim createSlider = Function(value As Byte) New Slider() With {.Minimum = 0, .Maximum = 255, .Value = value}
+        Dim addColorSlider As Action(Of String, SolidColorBrush) =
+            Sub(name As String, brush As SolidColorBrush)
+                Dim stackPanel As New StackPanel() With {
+                    .Margin = New Thickness(4)
+                }
 
-                Dim stackPanel As New StackPanel()
+                Dim header As New StackPanel() With {.Orientation = Orientation.Horizontal}
                 Dim label As New Label() With {.Content = name}
-                Dim sliderR = createSlider(initialColor.R)
-                Dim sliderG = createSlider(initialColor.G)
-                Dim sliderB = createSlider(initialColor.B)
+                Dim swatch As New Rectangle() With {
+                    .Width = 12,
+                    .Height = 12,
+                    .Fill = brush,
+                    .Stroke = Brushes.Black,
+                    .StrokeThickness = 1
+                }
+                header.Children.Add(swatch)
+                header.Children.Add(label)
+
+                Dim sliderR = createByteSlider(brush.Color.R)
+                Dim sliderG = createByteSlider(brush.Color.G)
+                Dim sliderB = createByteSlider(brush.Color.B)
                 Dim checkbox As New CheckBox() With {
                     .Content = "Single Color",
                     .IsChecked = True
@@ -53,14 +66,14 @@ Class MainWindow
                                                  sliderB.Value = slider.Value
                                              End If
                                              Dim newColor As Color = Color.FromArgb(255, CByte(sliderR.Value), CByte(sliderG.Value), CByte(sliderB.Value))
-                                             update(newColor)
+                                             brush.Color = newColor
                                          End Sub
 
                 AddHandler sliderR.ValueChanged, sliderValueChanged
                 AddHandler sliderG.ValueChanged, sliderValueChanged
                 AddHandler sliderB.ValueChanged, sliderValueChanged
 
-                stackPanel.Children.Add(label)
+                stackPanel.Children.Add(header)
                 stackPanel.Children.Add(sliderR)
                 stackPanel.Children.Add(sliderG)
                 stackPanel.Children.Add(sliderB)
@@ -69,10 +82,8 @@ Class MainWindow
                 Tools.Children.Add(stackPanel)
             End Sub
 
-        addColorSlider("Diffuse (Material)", diffuseMaterial.Color, Sub(c) diffuseMaterial.Color = c)
-        addColorSlider("Diffuse (Brush)", diffuseBrush.Color, Sub(c) diffuseBrush.Color = c)
-        addColorSlider("Emissive (Material)", emissiveMaterial.Color, Sub(c) emissiveMaterial.Color = c)
-        addColorSlider("Emissive (Brush)", emissiveBrush.Color, Sub(c) emissiveBrush.Color = c)
+        addColorSlider("Diffuse", diffuseBrush)
+        addColorSlider("Emissive", emissiveBrush)
 
         If True Then
             Dim stackPanel As New StackPanel()
@@ -94,19 +105,16 @@ Class MainWindow
 
         If True Then
             Dim stackPanel As New StackPanel()
-            Tools.Children.Add(stackPanel)
-
-            Dim heading As New Label() With {.Content = "Metrics"}
-            stackPanel.Children.Add(heading)
-
-            stackPanel.Children.Add(numTrisLabel)
 
             Dim showFps As New CheckBox() With {
                 .Content = "Show FPS"
             }
             AddHandler showFps.Checked, Sub() Viewport.ShowFrameRate = True
             AddHandler showFps.Unchecked, Sub() Viewport.ShowFrameRate = False
+
+            stackPanel.Children.Add(numTrisLabel)
             stackPanel.Children.Add(showFps)
+            Tools.Children.Add(stackPanel)
         End If
 
         Dim mesh As New MeshGeometry3D()
