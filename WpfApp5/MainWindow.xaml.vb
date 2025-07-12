@@ -21,6 +21,8 @@ Class MainWindow
             .Brightness = 1.0
         }
 
+        Dim numTrisLabel As New Label()
+
         Dim createSeparator = Function() New Separator() With {.Margin = New Thickness(10)}
 
         Dim addColorSlider As Action(Of String, Color, Action(Of Color)) =
@@ -90,6 +92,23 @@ Class MainWindow
             Tools.Children.Add(stackPanel)
         End If
 
+        If True Then
+            Dim stackPanel As New StackPanel()
+            Tools.Children.Add(stackPanel)
+
+            Dim heading As New Label() With {.Content = "Metrics"}
+            stackPanel.Children.Add(heading)
+
+            stackPanel.Children.Add(numTrisLabel)
+
+            Dim showFps As New CheckBox() With {
+                .Content = "Show FPS"
+            }
+            AddHandler showFps.Checked, Sub() Viewport.ShowFrameRate = True
+            AddHandler showFps.Unchecked, Sub() Viewport.ShowFrameRate = False
+            stackPanel.Children.Add(showFps)
+        End If
+
         Dim mesh As New MeshGeometry3D()
 
         Dim material As New MaterialGroup()
@@ -123,6 +142,9 @@ Class MainWindow
         Viewport.Children.Add(visual)
         Viewport.Children.Add(lines)
         Viewport.Children.Add(headlight)
+
+        Dim num = Viewport.Viewport.GetTotalNumberOfTriangles()
+        numTrisLabel.Content = $"Num Tris: {num}"
     End Sub
 
     Private headlight As DirectionalHeadLight
