@@ -164,7 +164,7 @@ Class MainWindow
             End Sub
 
         Dim showSimple, showFrame, showFar As New CheckBox
-        Dim forest As New ComboBox
+        Dim forestNum As New ComboBox
         Dim optMesh1, optMesh2, optMesh3 As New RadioButton
 
         Dim resetGeometry =
@@ -197,7 +197,7 @@ Class MainWindow
                 End If
 
                 Dim numForest As Integer = 0
-                Integer.TryParse(forest.SelectedItem.ToString(), numForest)
+                Integer.TryParse(forestNum.SelectedItem.ToString(), numForest)
                 For i As Integer = 1 To numForest
                     Dim p1 = P3(rnd.NextDouble() * 100000, rnd.NextDouble() * 100000, 0)
                     Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
@@ -252,16 +252,30 @@ Class MainWindow
             addCheckBox(showFrame, "Show Frame", False)
             addCheckBox(showFar, "Show Far", False)
 
-            forest.Items.Add("None")
-            forest.Items.Add("100")
-            forest.Items.Add("1000")
-            forest.Items.Add("10000")
-            forest.Items.Add("100000")
-            forest.Items.Add("1000000")
-            forest.SelectedIndex = 0
-            AddHandler forest.SelectionChanged, Sub() resetGeometry()
+            Dim forestNumGrid As New Grid
+            forestNumGrid.ColumnDefinitions.Add(New ColumnDefinition With {.Width = GridLength.Auto})
+            forestNumGrid.ColumnDefinitions.Add(New ColumnDefinition With {.Width = New GridLength(1, GridUnitType.Star)})
 
-            stackPanel.Children.Add(forest)
+            Dim numGridLabel As New Label With {
+                .Content = "Forest Num"
+            }
+
+            forestNum.Items.Add("None")
+            forestNum.Items.Add("100")
+            forestNum.Items.Add("1000")
+            forestNum.Items.Add("10000")
+            forestNum.Items.Add("100000")
+            forestNum.Items.Add("1000000")
+            forestNum.SelectedIndex = 0
+            AddHandler forestNum.SelectionChanged, Sub() resetGeometry()
+
+            forestNumGrid.Children.Add(numGridLabel)
+            forestNumGrid.Children.Add(forestNum)
+
+            Grid.SetColumn(forestNumGrid, 0)
+            Grid.SetColumn(forestNum, 1)
+
+            stackPanel.Children.Add(forestNumGrid)
             stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
