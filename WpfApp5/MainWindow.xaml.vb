@@ -25,7 +25,9 @@ Class MainWindow
             .Brightness = 1.0
         }
 
-        Dim numTrisLabel As New Label()
+        Dim opt = GenOpt.Opt1
+
+        Dim numVertsLabel, numTrisLabel, numMeshLabel, geoTimeLabel As New Label
 
         Dim createSeparator = Function() New Separator() With {.Margin = New Thickness(10)}
         Dim createByteSlider = Function(value As Byte) New Slider() With {.Minimum = 0, .Maximum = 255, .Value = value}
@@ -122,36 +124,51 @@ Class MainWindow
             AddHandler clipToBounds.Checked, Sub() Viewport.ClipToBounds = True
             AddHandler clipToBounds.Unchecked, Sub() Viewport.ClipToBounds = False
 
+            stackPanel.Children.Add(numVertsLabel)
             stackPanel.Children.Add(numTrisLabel)
+            stackPanel.Children.Add(numMeshLabel)
+            stackPanel.Children.Add(geoTimeLabel)
             stackPanel.Children.Add(showFps)
             stackPanel.Children.Add(clipToBounds)
             stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
 
-        Dim resetNumTris =
+        Dim resetMetrics =
             Sub()
+                Dim numVerts = 0
                 Dim numTris = 0
+                Dim numMeshes = 0
                 Viewport.Children.Traverse(Of GeometryModel3D)(
                     Sub(m, v, t)
                         Dim geometry = TryCast(m.Geometry, MeshGeometry3D)
                         If geometry IsNot Nothing Then
                             If geometry.TriangleIndices?.Count > 0 Then
+                                numVerts += geometry.Positions.Count
                                 numTris += geometry.TriangleIndices.Count \ 3
                             ElseIf geometry.Positions?.Count > 0 Then
+                                numVerts += geometry.Positions.Count
                                 numTris += geometry.Positions.Count \ 3
                             End If
+                            numMeshes += 1
                         End If
                     End Sub)
 
+                numVertsLabel.Content = $"Num Verts: {numVerts}"
                 numTrisLabel.Content = $"Num Tris: {numTris}"
+                numMeshLabel.Content = $"Num Meshes: {numMeshes}"
+                geoTimeLabel.Content = $"Create Time: {sw.ElapsedMilliseconds}ms"
             End Sub
 
         Dim showSimple, showFrame, showFar As New CheckBox
         Dim forest As New ComboBox
+        Dim optMesh1, optMesh2, optMesh3 As New RadioButton
+
         Dim resetGeometry =
             Sub()
-                Dim mesh As New MeshGeometry3D
+                sw.Restart()
+
+                Dim posLists As New List(Of Point3DCollection)
 
                 If showFrame.IsChecked Then
                     Dim col1Mat = Matrix3D.Identity
@@ -165,7 +182,7 @@ Class MainWindow
                     beamMat.Translate(V3(0, 0, 500 - 152 / 2))
 
                     For Each mat In {col1Mat, col2Mat, beamMat}
-                        AddCee(mesh, mat, 500, c15024)
+                        AddCee(posLists, opt, mat, 500, c15024)
                     Next
                 End If
 
@@ -173,7 +190,7 @@ Class MainWindow
                     Dim colStart = P3(1000, 1000, 0)
                     Dim colEnd = colStart + V3(0, 0, 1000)
                     Dim colXDir = V3(1, 0, 0)
-                    AddCee(mesh, c15024, colStart, colEnd, colXDir)
+                    AddCee(posLists, opt, c15024, colStart, colEnd, colXDir)
                 End If
 
                 Dim numForest As Integer = 0
@@ -183,35 +200,37 @@ Class MainWindow
                     Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
                     Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
                     Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
-                    AddCee(mesh, c15024, p1, p2, xdir)
+                    AddCee(posLists, opt, c15024, p1, p2, xdir)
                 Next
 
                 If showFar.IsChecked Then
                     Dim p1 = P3(100000, 100000, 0)
                     Dim p2 = p1 + V3(0, 0, 1000)
                     Dim xdir = V3(1, 0, 0)
-                    AddCee(mesh, c15024, p1, p2, xdir)
+                    AddCee(posLists, opt, c15024, p1, p2, xdir)
                 End If
 
-                Dim model As New GeometryModel3D(mesh, ceeMaterial)
+                Dim modelGroup As New Model3DGroup
+                For Each posList In posLists
+                    Dim mesh As New MeshGeometry3D() With {
+                        .Positions = posList
+                    }
+                    Dim model As New GeometryModel3D(mesh, ceeMaterial)
+                    modelGroup.Children.Add(model)
+                Next
 
-                Dim visual As New ModelVisual3D With {
-                    .Content = model
+                If modelVisuals IsNot Nothing Then
+                    Viewport.Children.Remove(modelVisuals)
+                End If
+
+                modelVisuals = New ModelVisual3D With {
+                    .Content = modelGroup
                 }
+                Viewport.Children.Add(modelVisuals)
 
-                For Each modelVisual In modelVisuals
-                    Viewport.Children.Remove(modelVisual)
-                Next
+                sw.Stop()
 
-                modelVisuals.Clear()
-
-                modelVisuals.Add(visual)
-
-                For Each modelVisual In modelVisuals
-                    Viewport.Children.Add(modelVisual)
-                Next
-
-                resetNumTris()
+                resetMetrics()
             End Sub
 
         If True Then
@@ -244,6 +263,27 @@ Class MainWindow
             Tools.Children.Add(stackPanel)
         End If
 
+        If True Then
+            Dim stackPanel As New StackPanel
+
+            Dim addOpt =
+                Sub(rad As RadioButton, name As String, genOpt As GenOpt)
+                    rad.Content = name
+                    rad.IsChecked = opt = genOpt
+                    AddHandler rad.Checked, Sub()
+                                                opt = genOpt
+                                                resetGeometry()
+                                            End Sub
+                    stackPanel.Children.Add(rad)
+                End Sub
+
+            addOpt(optMesh1, "All in one mesh", GenOpt.Opt1)
+            addOpt(optMesh2, "Many meshes", GenOpt.Opt2)
+            addOpt(optMesh3, "One mesh per triangle", GenOpt.Opt3)
+
+            Tools.Children.Add(stackPanel)
+        End If
+
         resetGeometry()
 
         Viewport.Children.Add(headlight)
@@ -255,7 +295,7 @@ Class MainWindow
     Private diffuseBrush As SolidColorBrush
     Private emissiveBrush As SolidColorBrush
 
-    Private modelVisuals As New List(Of ModelVisual3D)
+    Private modelVisuals As ModelVisual3D
 
     Private ReadOnly c15024 As New CeeInfo() With {
         .Web = 152,
@@ -265,6 +305,7 @@ Class MainWindow
     }
 
     Private ReadOnly rnd As New Random()
+    Private ReadOnly sw As New Stopwatch()
 
     Class CeeInfo
         Public Web As Double
@@ -273,7 +314,7 @@ Class MainWindow
         Public Thickness As Double
     End Class
 
-    Private Sub AddCee(mesh As MeshGeometry3D, cee As CeeInfo, startPos As Point3D, endPos As Point3D, xdir As Vector3D)
+    Private Sub AddCee(posLists As List(Of Point3DCollection), opt As GenOpt, cee As CeeInfo, startPos As Point3D, endPos As Point3D, xdir As Vector3D)
         Dim spine = endPos - startPos
         Dim len = spine.Length
         Dim zdir = spine / len
@@ -286,10 +327,28 @@ Class MainWindow
             startPos.X, startPos.Y, startPos.Z, 1
         )
 
-        AddCee(mesh, mat, len, cee)
+        AddCee(posLists, opt, mat, len, cee)
     End Sub
 
-    Private Sub AddCee(mesh As MeshGeometry3D, mat As Matrix3D, len As Double, cee As CeeInfo)
+    Private Sub AddCee(posLists As List(Of Point3DCollection), opt As GenOpt, mat As Matrix3D, len As Double, cee As CeeInfo)
+        Select Case opt
+            Case GenOpt.Opt1
+                ' Just 1 list for everything
+                If posLists.Count = 0 Then
+                    posLists.Add(New Point3DCollection)
+                End If
+
+            Case GenOpt.Opt2
+                ' Always add a new mesh here
+                posLists.Add(New Point3DCollection)
+
+            Case GenOpt.Opt3
+                ' Ignore and we'll add a new mesh for each triangle
+
+            Case Else
+                Throw New InvalidOperationException($"Unknown opt value: {opt}")
+        End Select
+
         Dim hf = cee.Flange / 2
         Dim hw = cee.Web / 2
         Dim l = cee.Lip
@@ -328,9 +387,27 @@ Class MainWindow
 
         Dim tri =
             Sub(a As Integer, b As Integer, c As Integer)
-                mesh.Positions.Add(positions(a))
-                mesh.Positions.Add(positions(b))
-                mesh.Positions.Add(positions(c))
+                Dim posList As Point3DCollection
+
+                Select Case opt
+                    Case GenOpt.Opt1
+                        posList = posLists.Last()
+
+                    Case GenOpt.Opt2
+                        posList = posLists.Last()
+
+                    Case GenOpt.Opt3
+                        ' A new mesh for each triangle
+                        posList = New Point3DCollection
+                        posLists.Add(posList)
+
+                    Case Else
+                        Throw New InvalidOperationException($"Unknown opt value: {opt}")
+                End Select
+
+                posList.Add(positions(a))
+                posList.Add(positions(b))
+                posList.Add(positions(c))
             End Sub
 
         Dim quad =
@@ -386,4 +463,11 @@ Class MainWindow
     Private Sub Window_Loaded(sender As Object, e As RoutedEventArgs)
         Viewport.ZoomExtents()
     End Sub
+
+    Enum GenOpt
+        Opt1
+        Opt2
+        Opt3
+    End Enum
+
 End Class
