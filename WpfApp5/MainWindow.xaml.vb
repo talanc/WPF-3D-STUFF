@@ -12,6 +12,11 @@ Class MainWindow
 
         ' Add any initialization after the InitializeComponent() call.
 
+        Dim lines As New LinesVisual3D With {
+            .Thickness = 1,
+            .DepthOffset = 0.0001
+        }
+
         diffuseBrush = New SolidColorBrush(Colors.Gray)
         diffuseMaterial = New DiffuseMaterial(diffuseBrush)
         emissiveBrush = New SolidColorBrush(Colors.Gray)
@@ -112,8 +117,16 @@ Class MainWindow
             AddHandler showFps.Checked, Sub() Viewport.ShowFrameRate = True
             AddHandler showFps.Unchecked, Sub() Viewport.ShowFrameRate = False
 
+            Dim showLines As New CheckBox() With {
+                .Content = "Show Lines",
+                .IsChecked = True
+            }
+            AddHandler showLines.Checked, Sub() Viewport.Children.Add(lines)
+            AddHandler showLines.Unchecked, Sub() Viewport.Children.Remove(lines)
+
             stackPanel.Children.Add(numTrisLabel)
             stackPanel.Children.Add(showFps)
+            stackPanel.Children.Add(showLines)
             Tools.Children.Add(stackPanel)
         End If
 
@@ -167,10 +180,7 @@ Class MainWindow
             .Content = model
         }
 
-        Dim lines As New LinesVisual3D With {
-            .Thickness = 1,
-            .Points = New Point3DCollection(lineSegments)
-        }
+        lines.Points = New Point3DCollection(lineSegments)
 
         Viewport.Children.Add(visual)
         Viewport.Children.Add(lines)
