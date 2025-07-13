@@ -164,7 +164,7 @@ Class MainWindow
             End Sub
 
         Dim showSimple, showFrame, showFar As New CheckBox
-        Dim forestNum As New ComboBox
+        Dim forestNum, forestSize As New ComboBox
         Dim optMesh1, optMesh2, optMesh3 As New RadioButton
 
         Dim resetGeometry =
@@ -196,11 +196,12 @@ Class MainWindow
                     AddCee(posLists, opt, c15024, colStart, colEnd, colXDir)
                 End If
 
-                Dim numForest As Integer = 0
+                Dim numForest = 0
                 Integer.TryParse(forestNum.SelectedItem.ToString(), numForest)
+                Dim sizeForest = 1000 * Double.Parse(forestSize.SelectedItem.ToString())
                 For i As Integer = 1 To numForest
-                    Dim p1 = P3(rnd.NextDouble() * 100000, rnd.NextDouble() * 100000, 0)
-                    Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
+                    Dim p1 = P3(rnd.NextDouble() * sizeForest, rnd.NextDouble() * sizeForest, 0)
+                    Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 2000)
                     Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
                     Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
                     AddCee(posLists, opt, c15024, p1, p2, xdir)
@@ -252,30 +253,38 @@ Class MainWindow
             addCheckBox(showFrame, "Show Frame", False)
             addCheckBox(showFar, "Show Far", False)
 
-            Dim forestNumGrid As New Grid
-            forestNumGrid.ColumnDefinitions.Add(New ColumnDefinition With {.Width = GridLength.Auto})
-            forestNumGrid.ColumnDefinitions.Add(New ColumnDefinition With {.Width = New GridLength(1, GridUnitType.Star)})
+            Dim forestGrid As New Grid
+            forestGrid.ColumnDefinitions.Add(New ColumnDefinition With {.Width = GridLength.Auto})
+            forestGrid.ColumnDefinitions.Add(New ColumnDefinition With {.Width = New GridLength(1, GridUnitType.Star)})
 
-            Dim numGridLabel As New Label With {
-                .Content = "Forest Num"
-            }
+            Dim addForestCombo =
+                Sub(name As String, combo As ComboBox, items As String(), defaultItem As String)
+                    Dim row = forestGrid.RowDefinitions.Count
+                    forestGrid.RowDefinitions.Add(New RowDefinition())
 
-            forestNum.Items.Add("None")
-            forestNum.Items.Add("100")
-            forestNum.Items.Add("1000")
-            forestNum.Items.Add("10000")
-            forestNum.Items.Add("100000")
-            forestNum.Items.Add("1000000")
-            forestNum.SelectedIndex = 0
-            AddHandler forestNum.SelectionChanged, Sub() resetGeometry()
+                    Dim label As New Label With {
+                        .Content = name
+                    }
 
-            forestNumGrid.Children.Add(numGridLabel)
-            forestNumGrid.Children.Add(forestNum)
+                    For Each item In items
+                        combo.Items.Add(item)
+                    Next
+                    combo.SelectedItem = defaultItem
+                    AddHandler combo.SelectionChanged, Sub() resetGeometry()
 
-            Grid.SetColumn(forestNumGrid, 0)
-            Grid.SetColumn(forestNum, 1)
+                    forestGrid.Children.Add(label)
+                    forestGrid.Children.Add(combo)
 
-            stackPanel.Children.Add(forestNumGrid)
+                    Grid.SetRow(label, row)
+                    Grid.SetColumn(forestGrid, 0)
+
+                    Grid.SetRow(combo, row)
+                    Grid.SetColumn(combo, 1)
+                End Sub
+            addForestCombo("Forest Num", forestNum, {"None", "100", "1000", "10000", "100000", "1000000"}, "None")
+            addForestCombo("Forest Size", forestSize, {"10", "100", "1000", "10000"}, "10")
+
+            stackPanel.Children.Add(forestGrid)
             stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
