@@ -12,18 +12,21 @@ Class MainWindow
 
         ' Add any initialization after the InitializeComponent() call.
 
-        diffuseBrush = New SolidColorBrush(Colors.Gray)
-        diffuseMaterial = New DiffuseMaterial(diffuseBrush)
-        emissiveBrush = New SolidColorBrush(Colors.Gray)
-        emissiveMaterial = New EmissiveMaterial(emissiveBrush)
+        Dim diffuseBrush As New SolidColorBrush(Colors.Gray)
+        Dim diffuseMaterial As New DiffuseMaterial(diffuseBrush)
+        Dim emissiveBrush As New SolidColorBrush(Colors.Gray)
+        Dim emissiveMaterial As New EmissiveMaterial(emissiveBrush)
 
         Dim ceeMaterial As New MaterialGroup()
         ceeMaterial.Children.Add(diffuseMaterial)
         ceeMaterial.Children.Add(emissiveMaterial)
 
-        headlight = New DirectionalHeadLight() With {
+        Dim headlight As New DirectionalHeadLight() With {
             .Brightness = 1.0
         }
+        Viewport.Children.Add(headlight)
+
+        Dim modelVisuals As ModelVisual3D = Nothing
 
         Dim opt = GenOpt.Opt1
 
@@ -286,16 +289,7 @@ Class MainWindow
 
         resetGeometry()
 
-        Viewport.Children.Add(headlight)
     End Sub
-
-    Private headlight As DirectionalHeadLight
-    Private diffuseMaterial As DiffuseMaterial
-    Private emissiveMaterial As EmissiveMaterial
-    Private diffuseBrush As SolidColorBrush
-    Private emissiveBrush As SolidColorBrush
-
-    Private modelVisuals As ModelVisual3D
 
     Private ReadOnly c15024 As New CeeInfo() With {
         .Web = 152,
