@@ -151,8 +151,20 @@ Class MainWindow
         Viewport.Children.Add(lines)
         Viewport.Children.Add(headlight)
 
-        Dim num = Viewport.Viewport.GetTotalNumberOfTriangles()
-        numTrisLabel.Content = $"Num Tris: {num}"
+        Dim numTris = 0
+        Viewport.Children.Traverse(Of GeometryModel3D)(
+            Sub(m, v, t)
+                Dim geometry = TryCast(m.Geometry, MeshGeometry3D)
+                If geometry IsNot Nothing Then
+                    If geometry.TriangleIndices.Count > 0 Then
+                        numTris += geometry.TriangleIndices.Count \ 3
+                    ElseIf geometry.Positions.Count > 0 Then
+                        numTris += geometry.Positions.Count \ 3
+                    End If
+                End If
+            End Sub)
+
+        numTrisLabel.Content = $"Num Tris: {numTris}"
     End Sub
 
     Private headlight As DirectionalHeadLight
