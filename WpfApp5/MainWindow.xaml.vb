@@ -21,12 +21,12 @@ Class MainWindow
         ceeMaterial.Children.Add(diffuseMaterial)
         ceeMaterial.Children.Add(emissiveMaterial)
 
+        Dim modelVisuals As ModelVisual3D = Nothing
+
         Dim headlight As New DirectionalHeadLight() With {
             .Brightness = 1.0
         }
         Viewport.Children.Add(headlight)
-
-        Dim modelVisuals As ModelVisual3D = Nothing
 
         Dim opt = GenOpt.Opt1
 
