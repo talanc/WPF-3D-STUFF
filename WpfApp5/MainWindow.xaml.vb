@@ -1,8 +1,8 @@
 ﻿Option Explicit On
 Option Strict On
 
-Imports System.Windows.Media.Media3D
 Imports HelixToolkit.Wpf
+Imports System.Windows.Media.Media3D
 
 Class MainWindow
     Sub New()
@@ -109,13 +109,22 @@ Class MainWindow
             Dim stackPanel As New StackPanel()
 
             Dim showFps As New CheckBox() With {
-                .Content = "Show FPS"
+                .Content = "Show FPS",
+                .IsChecked = Viewport.ShowFrameRate
             }
             AddHandler showFps.Checked, Sub() Viewport.ShowFrameRate = True
             AddHandler showFps.Unchecked, Sub() Viewport.ShowFrameRate = False
 
+            Dim clipToBounds As New CheckBox() With {
+                .Content = "Clip to bounds",
+                .IsChecked = Viewport.ClipToBounds
+            }
+            AddHandler clipToBounds.Checked, Sub() Viewport.ClipToBounds = True
+            AddHandler clipToBounds.Unchecked, Sub() Viewport.ClipToBounds = False
+
             stackPanel.Children.Add(numTrisLabel)
             stackPanel.Children.Add(showFps)
+            stackPanel.Children.Add(clipToBounds)
             stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
@@ -138,7 +147,8 @@ Class MainWindow
                 numTrisLabel.Content = $"Num Tris: {numTris}"
             End Sub
 
-        Dim showSimple, showFrame, showHeaps, showFar As New CheckBox
+        Dim showSimple, showFrame, showFar As New CheckBox
+        Dim forest As New ComboBox
         Dim resetGeometry =
             Sub()
                 Dim mesh As New MeshGeometry3D
@@ -166,18 +176,17 @@ Class MainWindow
                     AddCee(mesh, c15024, colStart, colEnd, colXDir)
                 End If
 
-                If showHeaps.IsChecked Then
-                    Dim rnd As New Random()
-                    For i As Integer = 1 To 1000
-                        Dim p1 = P3(rnd.NextDouble() * 100000, rnd.NextDouble() * 100000, 0)
-                        Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
-                        Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
-                        Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
-                        AddCee(mesh, c15024, p1, p2, xdir)
-                    Next
-                End If
+                Dim numForest As Integer = 0
+                Integer.TryParse(forest.SelectedItem.ToString(), numForest)
+                For i As Integer = 1 To numForest
+                    Dim p1 = P3(rnd.NextDouble() * 100000, rnd.NextDouble() * 100000, 0)
+                    Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
+                    Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
+                    Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
+                    AddCee(mesh, c15024, p1, p2, xdir)
+                Next
 
-                If False Then
+                If showFar.IsChecked Then
                     Dim p1 = P3(100000, 100000, 0)
                     Dim p2 = p1 + V3(0, 0, 1000)
                     Dim xdir = V3(1, 0, 0)
@@ -208,21 +217,29 @@ Class MainWindow
         If True Then
             Dim stackPanel As New StackPanel
 
-            Dim setupCheckBox =
+            Dim addCheckBox =
                 Function(checkBox As CheckBox, name As String, isChecked As Boolean)
                     checkBox.Content = name
                     checkBox.IsChecked = isChecked
                     AddHandler checkBox.Checked, Sub() resetGeometry()
                     AddHandler checkBox.Unchecked, Sub() resetGeometry()
+                    stackPanel.Children.Add(checkBox)
                     Return checkBox
                 End Function
-            setupCheckBox(showSimple, "Show Simple", True)
-            setupCheckBox(showFrame, "Show Frame", False)
-            setupCheckBox(showHeaps, "Show Heaps", False)
+            addCheckBox(showSimple, "Show Simple", True)
+            addCheckBox(showFrame, "Show Frame", False)
+            addCheckBox(showFar, "Show Far", False)
 
-            stackPanel.Children.Add(showSimple)
-            stackPanel.Children.Add(showFrame)
-            stackPanel.Children.Add(showHeaps)
+            forest.Items.Add("None")
+            forest.Items.Add("100")
+            forest.Items.Add("1000")
+            forest.Items.Add("10000")
+            forest.Items.Add("100000")
+            forest.Items.Add("1000000")
+            forest.SelectedIndex = 0
+            AddHandler forest.SelectionChanged, Sub() resetGeometry()
+
+            stackPanel.Children.Add(forest)
             stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
@@ -246,6 +263,8 @@ Class MainWindow
         .Lip = 18.5,
         .Thickness = 2.4
     }
+
+    Private ReadOnly rnd As New Random()
 
     Class CeeInfo
         Public Web As Double
