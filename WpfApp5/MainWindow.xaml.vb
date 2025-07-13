@@ -12,15 +12,14 @@ Class MainWindow
 
         ' Add any initialization after the InitializeComponent() call.
 
-        Dim lines As New LinesVisual3D With {
-            .Thickness = 1,
-            .DepthOffset = 0.0001
-        }
-
         diffuseBrush = New SolidColorBrush(Colors.Gray)
         diffuseMaterial = New DiffuseMaterial(diffuseBrush)
         emissiveBrush = New SolidColorBrush(Colors.Gray)
         emissiveMaterial = New EmissiveMaterial(emissiveBrush)
+
+        Dim ceeMaterial As New MaterialGroup()
+        ceeMaterial.Children.Add(diffuseMaterial)
+        ceeMaterial.Children.Add(emissiveMaterial)
 
         headlight = New DirectionalHeadLight() With {
             .Brightness = 1.0
@@ -56,7 +55,6 @@ Class MainWindow
                     .Content = "Single Color",
                     .IsChecked = True
                 }
-                Dim separator = createSeparator()
 
                 AddHandler checkbox.Checked, Sub()
                                                  sliderG.Value = sliderR.Value
@@ -83,7 +81,7 @@ Class MainWindow
                 stackPanel.Children.Add(sliderG)
                 stackPanel.Children.Add(sliderB)
                 stackPanel.Children.Add(checkbox)
-                stackPanel.Children.Add(separator)
+                stackPanel.Children.Add(createSeparator())
                 Tools.Children.Add(stackPanel)
             End Sub
 
@@ -98,13 +96,12 @@ Class MainWindow
                 .Maximum = 1,
                 .Value = headlight.Brightness
             }
-            Dim separator = createSeparator()
 
             AddHandler slider.ValueChanged, Sub() headlight.Brightness = slider.Value
 
             stackPanel.Children.Add(label)
             stackPanel.Children.Add(slider)
-            stackPanel.Children.Add(separator)
+            stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
 
@@ -117,89 +114,122 @@ Class MainWindow
             AddHandler showFps.Checked, Sub() Viewport.ShowFrameRate = True
             AddHandler showFps.Unchecked, Sub() Viewport.ShowFrameRate = False
 
-            Dim showLines As New CheckBox() With {
-                .Content = "Show Lines",
-                .IsChecked = True
-            }
-            AddHandler showLines.Checked, Sub() Viewport.Children.Add(lines)
-            AddHandler showLines.Unchecked, Sub() Viewport.Children.Remove(lines)
-
             stackPanel.Children.Add(numTrisLabel)
             stackPanel.Children.Add(showFps)
-            stackPanel.Children.Add(showLines)
+            stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
 
-        Dim mesh As New MeshGeometry3D()
+        Dim resetNumTris =
+            Sub()
+                Dim numTris = 0
+                Viewport.Children.Traverse(Of GeometryModel3D)(
+                    Sub(m, v, t)
+                        Dim geometry = TryCast(m.Geometry, MeshGeometry3D)
+                        If geometry IsNot Nothing Then
+                            If geometry.TriangleIndices?.Count > 0 Then
+                                numTris += geometry.TriangleIndices.Count \ 3
+                            ElseIf geometry.Positions?.Count > 0 Then
+                                numTris += geometry.Positions.Count \ 3
+                            End If
+                        End If
+                    End Sub)
 
-        Dim lineSegments As New List(Of Point3D)
+                numTrisLabel.Content = $"Num Tris: {numTris}"
+            End Sub
 
-        Dim c15024 As New CeeInfo() With {.Web = 152, .Flange = 64, .Lip = 18.5, .Thickness = 2.4}
+        Dim showSimple, showFrame, showHeaps, showFar As New CheckBox
+        Dim resetGeometry =
+            Sub()
+                Dim mesh As New MeshGeometry3D
 
-        If True Then
-            Dim col1Mat = Matrix3D.Identity
-            col1Mat.Translate(V3(0, -152 / 2, 0))
+                If showFrame.IsChecked Then
+                    Dim col1Mat = Matrix3D.Identity
+                    col1Mat.Translate(V3(0, -152 / 2, 0))
 
-            Dim col2Mat = Matrix3D.Identity
-            col2Mat.Translate(V3(0, 500 + 152 / 2, 0))
+                    Dim col2Mat = Matrix3D.Identity
+                    col2Mat.Translate(V3(0, 500 + 152 / 2, 0))
 
-            Dim beamMat = Matrix3D.Identity
-            beamMat.Rotate(New Quaternion(V3(1, 0, 0), -90))
-            beamMat.Translate(V3(0, 0, 500 - 152 / 2))
+                    Dim beamMat = Matrix3D.Identity
+                    beamMat.Rotate(New Quaternion(V3(1, 0, 0), -90))
+                    beamMat.Translate(V3(0, 0, 500 - 152 / 2))
 
-            For Each mat In {col1Mat, col2Mat, beamMat}
-                AddCee(mesh, lineSegments, mat, 500, c15024)
-            Next
-        End If
-
-        If True Then
-            Dim colStart = P3(1000, 1000, 0)
-            Dim colEnd = colStart + V3(0, 0, 1000)
-            Dim colXDir = V3(1, 0, 0)
-            AddCee(mesh, lineSegments, c15024, colStart, colEnd, colXDir)
-        End If
-
-        If True Then
-            Dim rnd As New Random()
-            For i As Integer = 1 To 500
-                Dim p1 = P3(rnd.NextDouble() * 10000, rnd.NextDouble() * 10000, 0)
-                Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
-                Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
-                Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
-                AddCee(mesh, lineSegments, c15024, p1, p2, xdir)
-            Next
-        End If
-
-        Dim material As New MaterialGroup()
-        material.Children.Add(diffuseMaterial)
-        material.Children.Add(emissiveMaterial)
-
-        Dim model As New GeometryModel3D(mesh, material)
-
-        Dim visual As New ModelVisual3D With {
-            .Content = model
-        }
-
-        lines.Points = New Point3DCollection(lineSegments)
-
-        Viewport.Children.Add(visual)
-        Viewport.Children.Add(lines)
-        Viewport.Children.Add(headlight)
-
-        Dim numTris = 0
-        Viewport.Children.Traverse(Of GeometryModel3D)(
-            Sub(m, v, t)
-                Dim geometry = TryCast(m.Geometry, MeshGeometry3D)
-                If geometry IsNot Nothing Then
-                    If geometry.TriangleIndices?.Count > 0 Then
-                        numTris += geometry.TriangleIndices.Count \ 3
-                    ElseIf geometry.Positions?.Count > 0 Then
-                        numTris += geometry.Positions.Count \ 3
-                    End If
+                    For Each mat In {col1Mat, col2Mat, beamMat}
+                        AddCee(mesh, mat, 500, c15024)
+                    Next
                 End If
-            End Sub)
 
-        numTrisLabel.Content = $"Num Tris: {numTris}"
+                If showSimple.IsChecked Then
+                    Dim colStart = P3(1000, 1000, 0)
+                    Dim colEnd = colStart + V3(0, 0, 1000)
+                    Dim colXDir = V3(1, 0, 0)
+                    AddCee(mesh, c15024, colStart, colEnd, colXDir)
+                End If
+
+                If showHeaps.IsChecked Then
+                    Dim rnd As New Random()
+                    For i As Integer = 1 To 1000
+                        Dim p1 = P3(rnd.NextDouble() * 100000, rnd.NextDouble() * 100000, 0)
+                        Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
+                        Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
+                        Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
+                        AddCee(mesh, c15024, p1, p2, xdir)
+                    Next
+                End If
+
+                If False Then
+                    Dim p1 = P3(100000, 100000, 0)
+                    Dim p2 = p1 + V3(0, 0, 1000)
+                    Dim xdir = V3(1, 0, 0)
+                    AddCee(mesh, c15024, p1, p2, xdir)
+                End If
+
+                Dim model As New GeometryModel3D(mesh, ceeMaterial)
+
+                Dim visual As New ModelVisual3D With {
+                    .Content = model
+                }
+
+                For Each modelVisual In modelVisuals
+                    Viewport.Children.Remove(modelVisual)
+                Next
+
+                modelVisuals.Clear()
+
+                modelVisuals.Add(visual)
+
+                For Each modelVisual In modelVisuals
+                    Viewport.Children.Add(modelVisual)
+                Next
+
+                resetNumTris()
+            End Sub
+
+        If True Then
+            Dim stackPanel As New StackPanel
+
+            Dim setupCheckBox =
+                Function(checkBox As CheckBox, name As String, isChecked As Boolean)
+                    checkBox.Content = name
+                    checkBox.IsChecked = isChecked
+                    AddHandler checkBox.Checked, Sub() resetGeometry()
+                    AddHandler checkBox.Unchecked, Sub() resetGeometry()
+                    Return checkBox
+                End Function
+            setupCheckBox(showSimple, "Show Simple", True)
+            setupCheckBox(showFrame, "Show Frame", False)
+            setupCheckBox(showHeaps, "Show Heaps", False)
+
+            stackPanel.Children.Add(showSimple)
+            stackPanel.Children.Add(showFrame)
+            stackPanel.Children.Add(showHeaps)
+            stackPanel.Children.Add(createSeparator())
+            Tools.Children.Add(stackPanel)
+        End If
+
+        resetGeometry()
+
+        Viewport.Children.Add(headlight)
     End Sub
 
     Private headlight As DirectionalHeadLight
@@ -208,6 +238,15 @@ Class MainWindow
     Private diffuseBrush As SolidColorBrush
     Private emissiveBrush As SolidColorBrush
 
+    Private modelVisuals As New List(Of ModelVisual3D)
+
+    Private ReadOnly c15024 As New CeeInfo() With {
+        .Web = 152,
+        .Flange = 64,
+        .Lip = 18.5,
+        .Thickness = 2.4
+    }
+
     Class CeeInfo
         Public Web As Double
         Public Flange As Double
@@ -215,7 +254,7 @@ Class MainWindow
         Public Thickness As Double
     End Class
 
-    Private Sub AddCee(mesh As MeshGeometry3D, linePoints As IList(Of Point3D), cee As CeeInfo, startPos As Point3D, endPos As Point3D, xdir As Vector3D)
+    Private Sub AddCee(mesh As MeshGeometry3D, cee As CeeInfo, startPos As Point3D, endPos As Point3D, xdir As Vector3D)
         Dim spine = endPos - startPos
         Dim len = spine.Length
         Dim zdir = spine / len
@@ -228,10 +267,10 @@ Class MainWindow
             startPos.X, startPos.Y, startPos.Z, 1
         )
 
-        AddCee(mesh, linePoints, mat, len, cee)
+        AddCee(mesh, mat, len, cee)
     End Sub
 
-    Private Sub AddCee(mesh As MeshGeometry3D, linePoints As IList(Of Point3D), mat As Matrix3D, len As Double, cee As CeeInfo)
+    Private Sub AddCee(mesh As MeshGeometry3D, mat As Matrix3D, len As Double, cee As CeeInfo)
         Dim hf = cee.Flange / 2
         Dim hw = cee.Web / 2
         Dim l = cee.Lip
@@ -264,44 +303,8 @@ Class MainWindow
             P3(+hf - t, +hw - l, len)
         }
 
-        Dim lineOffset = 0.0
-        Dim linePositions = positions.ToList()
-        For i = 0 To linePositions.Count - 1
-            Dim newPos = linePositions(i)
-
-            Select Case newPos.X
-                Case -hf, +hf - t
-                    newPos.X -= lineOffset
-                Case +hf, -hf + t
-                    newPos.X += lineOffset
-                Case Else
-                    Throw New InvalidOperationException($"Unknown X: {newPos.X}")
-            End Select
-
-            Select Case newPos.Y
-                Case -hw, +hw - l, +hw - t
-                    newPos.Y -= lineOffset
-                Case +hw, -hw + l, -hw + t
-                    newPos.Y += lineOffset
-                Case Else
-                    Throw New InvalidOperationException($"Unknown Y: {newPos.Y}")
-            End Select
-
-            Select Case newPos.Z
-                Case 0
-                    newPos.Z -= lineOffset
-                Case len
-                    newPos.Z += lineOffset
-                Case Else
-                    Throw New InvalidOperationException($"Unknown Z: {newPos.Z}")
-            End Select
-
-            linePositions(i) = newPos
-        Next
-
         For i = 0 To positions.Length - 1
             positions(i) = mat.Transform(positions(i))
-            linePositions(i) = mat.Transform(linePositions(i))
         Next
 
         Dim tri =
@@ -344,26 +347,6 @@ Class MainWindow
         quad(9, 10, 22, 21)
         quad(10, 11, 23, 22)
         quad(11, 0, 12, 23)
-
-        Dim line =
-            Sub(a As Integer, b As Integer)
-                linePoints.Add(linePositions(a))
-                linePoints.Add(linePositions(b))
-            End Sub
-
-        Dim lineRangeLoop =
-            Sub(a As Integer, b As Integer)
-                For i = a + 1 To b
-                    line(i - 1, i)
-                Next
-                line(b, a)
-            End Sub
-
-        lineRangeLoop(0, 11)
-        lineRangeLoop(12, 23)
-        For i = 0 To 11
-            line(i, i + 12)
-        Next
     End Sub
 
     Private Function P3(x As Double, y As Double, z As Double) As Point3D
