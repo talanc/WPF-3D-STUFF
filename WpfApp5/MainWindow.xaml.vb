@@ -143,8 +143,25 @@ Class MainWindow
         beamMat.Rotate(New Quaternion(V3(1, 0, 0), -90))
         beamMat.Translate(V3(0, 0, 500 - 152 / 2))
 
+        Dim c15024 As New CeeInfo() With {.Web = 152, .Flange = 64, .Lip = 18.5, .Thickness = 2.4}
+
         For Each mat In {col1Mat, col2Mat, beamMat}
-            AddCee(mesh, lines.Points, mat, 152, 64, 18.5, 2.4, 500)
+            AddCee(mesh, lines.Points, mat, 500, c15024)
+        Next
+
+
+        Dim colStart = P3(1000, 1000, 0)
+        Dim colEnd = colStart + V3(0, 0, 1000)
+        Dim colXDir = V3(1, 0, 0)
+        AddCee(mesh, lines.Points, c15024, colStart, colEnd, colXDir)
+
+        Dim rnd As New Random()
+        For i As Integer = 1 To 1000
+            Dim p1 = P3(rnd.NextDouble() * 10000, rnd.NextDouble() * 10000, 0)
+            Dim p2 = p1 + V3(0, 0, 500 + rnd.NextDouble() * 1000)
+            Dim ang = rnd.Next(0, 360) / (Math.PI * 2)
+            Dim xdir = V3(Math.Cos(ang), Math.Sin(ang), 0)
+            AddCee(mesh, lines.Points, c15024, p1, p2, xdir)
         Next
 
         Viewport.Children.Add(visual)
@@ -156,9 +173,9 @@ Class MainWindow
             Sub(m, v, t)
                 Dim geometry = TryCast(m.Geometry, MeshGeometry3D)
                 If geometry IsNot Nothing Then
-                    If geometry.TriangleIndices.Count > 0 Then
+                    If geometry.TriangleIndices?.Count > 0 Then
                         numTris += geometry.TriangleIndices.Count \ 3
-                    ElseIf geometry.Positions.Count > 0 Then
+                    ElseIf geometry.Positions?.Count > 0 Then
                         numTris += geometry.Positions.Count \ 3
                     End If
                 End If
@@ -173,9 +190,34 @@ Class MainWindow
     Private diffuseBrush As SolidColorBrush
     Private emissiveBrush As SolidColorBrush
 
-    Private Sub AddCee(mesh As MeshGeometry3D, linePoints As Point3DCollection, mat As Matrix3D, w As Double, f As Double, l As Double, t As Double, len As Double)
-        Dim hf = f / 2
-        Dim hw = w / 2
+    Class CeeInfo
+        Public Web As Double
+        Public Flange As Double
+        Public Lip As Double
+        Public Thickness As Double
+    End Class
+
+    Private Sub AddCee(mesh As MeshGeometry3D, linePoints As Point3DCollection, cee As CeeInfo, startPos As Point3D, endPos As Point3D, xdir As Vector3D)
+        Dim spine = endPos - startPos
+        Dim len = spine.Length
+        Dim zdir = spine / len
+        Dim ydir = Vector3D.CrossProduct(zdir, xdir)
+
+        Dim mat As New Matrix3D(
+            xdir.X, xdir.Y, xdir.Z, 0,
+            ydir.X, ydir.Y, ydir.Z, 0,
+            zdir.X, zdir.Y, zdir.Z, 0,
+            startPos.X, startPos.Y, startPos.Z, 1
+        )
+
+        AddCee(mesh, linePoints, mat, len, cee)
+    End Sub
+
+    Private Sub AddCee(mesh As MeshGeometry3D, linePoints As Point3DCollection, mat As Matrix3D, len As Double, cee As CeeInfo)
+        Dim hf = cee.Flange / 2
+        Dim hw = cee.Web / 2
+        Dim l = cee.Lip
+        Dim t = cee.Thickness
 
         Dim positions As Point3D() = {
             P3(+hf, +hw - l, 0),
