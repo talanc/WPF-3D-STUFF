@@ -28,6 +28,21 @@ Class MainWindow
         }
         Viewport.Children.Add(headlight)
 
+        Dim dirLight As New DirectionalLight With {
+            .Color = Colors.White,
+            .Direction = V3(-1, 0, 0)
+        }
+        Dim dirLightVisual As New ModelVisual3D With {
+            .Content = dirLight
+        }
+        AddHandler Viewport.Viewport.Camera.Changed,
+            Sub(sender, e)
+                Dim camera = DirectCast(sender, PerspectiveCamera)
+                Dim lookDir = camera.LookDirection
+                lookDir.Normalize()
+                dirLight.Direction = lookDir
+            End Sub
+
         Dim opt = GenOpt.Opt1
 
         Dim numVertsLabel, numTrisLabel, numMeshLabel, geoTimeLabel As New Label
@@ -102,7 +117,13 @@ Class MainWindow
                 .Value = headlight.Brightness
             }
 
-            AddHandler slider.ValueChanged, Sub() headlight.Brightness = slider.Value
+            AddHandler slider.ValueChanged,
+                Sub()
+                    headlight.Brightness = slider.Value
+
+                    Dim value = CByte(slider.Value * 255)
+                    dirLight.Color = Color.FromArgb(255, value, value, value)
+                End Sub
 
             stackPanel.Children.Add(label)
             stackPanel.Children.Add(slider)
@@ -306,6 +327,45 @@ Class MainWindow
             addOpt(optMesh1, "All in one mesh", GenOpt.Opt1)
             addOpt(optMesh2, "Many meshes", GenOpt.Opt2)
             addOpt(optMesh3, "One mesh per triangle", GenOpt.Opt3)
+            stackPanel.Children.Add(createSeparator())
+
+            Tools.Children.Add(stackPanel)
+        End If
+
+        If True Then
+            Dim stackPanel As New StackPanel
+
+            Dim addOpt =
+                Sub(name As String, isChecked As Boolean, showLightHelix As Boolean, showLightCustom As Boolean)
+                    Dim rad As New RadioButton With {
+                        .Content = name,
+                        .IsChecked = isChecked
+                    }
+
+                    Dim safeAddOrRemove = Sub(item As ModelVisual3D, addOrKeep As Boolean)
+                                              If addOrKeep Then
+                                                  If Not Viewport.Children.Contains(item) Then
+                                                      Viewport.Children.Add(item)
+                                                  End If
+                                              Else
+                                                  Viewport.Children.Remove(item)
+                                              End If
+                                          End Sub
+
+                    AddHandler rad.Checked, Sub()
+                                                safeAddOrRemove(headlight, showLightHelix)
+                                                safeAddOrRemove(dirLightVisual, showLightCustom)
+                                            End Sub
+                    stackPanel.Children.Add(rad)
+                End Sub
+
+            Dim containsHelix = Viewport.Children.Contains(headlight)
+            Dim containsCustom = Viewport.Children.Contains(dirLightVisual)
+
+            addOpt("None", Not containsHelix AndAlso Not containsCustom, False, False)
+            addOpt("Helix", containsHelix, True, False)
+            addOpt("Custom", containsCustom, False, True)
+            stackPanel.Children.Add(createSeparator())
 
             Tools.Children.Add(stackPanel)
         End If
