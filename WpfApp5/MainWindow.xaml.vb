@@ -1,7 +1,6 @@
 ﻿Option Explicit On
 Option Strict On
 
-Imports HelixToolkit.Wpf
 Imports System.Windows.Media.Media3D
 
 Class MainWindow
@@ -503,10 +502,19 @@ Class MainWindow
     End Function
 
     Private Sub Viewport_MouseDoubleClick(sender As Object, e As MouseButtonEventArgs)
-        Dim pos = Viewport3DHelper.FindNearestPoint(Viewport.Viewport, e.GetPosition(Viewport))
-        If pos.HasValue Then
-            Viewport.Camera.LookAt(pos.Value, 500)
-        End If
+        VisualTreeHelper.HitTest(
+            Viewport,
+            Nothing,
+            Function(hit)
+                Dim rayHit = TryCast(hit, RayHitTestResult)
+                If rayHit IsNot Nothing Then
+                    Dim pos = rayHit.PointHit
+                    Viewport.Camera.Position = pos - Viewport.Camera.LookDirection
+                    Return HitTestResultBehavior.Stop
+                End If
+                Return HitTestResultBehavior.Continue
+            End Function,
+            New PointHitTestParameters(e.GetPosition(Viewport)))
     End Sub
 
     Private Sub Window_Loaded(sender As Object, e As RoutedEventArgs)
