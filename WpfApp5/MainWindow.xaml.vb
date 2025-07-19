@@ -148,20 +148,46 @@ Class MainWindow
                 Dim numVerts = 0
                 Dim numTris = 0
                 Dim numMeshes = 0
-                Viewport.Children.Traverse(Of GeometryModel3D)(
-                    Sub(m, v, t)
-                        Dim geometry = TryCast(m.Geometry, MeshGeometry3D)
-                        If geometry IsNot Nothing Then
-                            If geometry.TriangleIndices?.Count > 0 Then
-                                numVerts += geometry.Positions.Count
-                                numTris += geometry.TriangleIndices.Count \ 3
-                            ElseIf geometry.Positions?.Count > 0 Then
-                                numVerts += geometry.Positions.Count
-                                numTris += geometry.Positions.Count \ 3
+                Dim traverseModel As Action(Of Model3D) =
+                    Sub(model)
+                        Dim gm = TryCast(model, GeometryModel3D)
+                        If gm IsNot Nothing Then
+                            Dim g = TryCast(gm.Geometry, MeshGeometry3D)
+                            If g IsNot Nothing Then
+                                If g.TriangleIndices?.Count > 0 Then
+                                    numVerts += g.Positions.Count
+                                    numTris += g.TriangleIndices.Count \ 3
+                                ElseIf g.Positions?.Count > 0 Then
+                                    numVerts += g.Positions.Count
+                                    numTris += g.Positions.Count \ 3
+                                End If
+                                numMeshes += 1
                             End If
-                            numMeshes += 1
+                            Return
                         End If
-                    End Sub)
+
+                        Dim mg = TryCast(model, Model3DGroup)
+                        If mg IsNot Nothing Then
+                            For Each m In mg.Children
+                                traverseModel(m)
+                            Next
+                            Return
+                        End If
+                    End Sub
+                Dim traverseVisual As Action(Of Visual3D) =
+                    Sub(items As Visual3D)
+                        Dim mv = TryCast(items, ModelVisual3D)
+                        If mv IsNot Nothing Then
+                            traverseModel(mv.Content)
+
+                            For Each child In mv.Children
+                                traverseVisual(child)
+                            Next
+                        End If
+                    End Sub
+                For Each child In Viewport.Children
+                    traverseVisual(child)
+                Next
 
                 numVertsLabel.Content = $"Num Verts: {numVerts}"
                 numTrisLabel.Content = $"Num Tris: {numTris}"
