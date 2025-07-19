@@ -29,7 +29,7 @@ Class MainWindow
         Dim headlightVisual As New ModelVisual3D With {
             .Content = headlight
         }
-        AddHandler Viewport.Viewport.Camera.Changed,
+        AddHandler Viewport.Camera.Changed,
             Sub(sender, e)
                 Dim camera = DirectCast(sender, PerspectiveCamera)
                 Dim lookDir = camera.LookDirection
@@ -43,7 +43,7 @@ Class MainWindow
         Dim numVertsLabel, numTrisLabel, numMeshLabel, geoTimeLabel As New Label
 
         Dim createSeparator = Function() New Separator() With {.Margin = New Thickness(10)}
-        Dim createByteSlider = Function(value As Byte) New Slider() With {.Minimum = 0, .Maximum = 255, .Value = value}
+        Dim createByteSlider = Function(value As Byte) New Slider() With {.IsSnapToTickEnabled = True, .Minimum = 0, .Maximum = 255, .Value = value}
 
         Dim addColorSlider =
             Sub(name As String, getColor As Func(Of Color), setColor As Action(Of Color))
@@ -54,6 +54,8 @@ Class MainWindow
                 Dim color = getColor()
                 Dim swatchBrush As New SolidColorBrush(color)
 
+                Dim colorStr = Function(c As Color) $"{c.R},{c.G},{c.B}"
+
                 Dim header As New StackPanel() With {.Orientation = Orientation.Horizontal}
                 Dim label As New Label() With {.Content = name}
                 Dim swatch As New Rectangle() With {
@@ -63,9 +65,14 @@ Class MainWindow
                     .Stroke = Brushes.Black,
                     .StrokeThickness = 1
                 }
+                Dim rgb As New Label With {
+                    .Content = colorStr(color)
+                }
+                AddHandler rgb.MouseDoubleClick, Sub() Clipboard.SetText(rgb.Content.ToString())
 
                 header.Children.Add(swatch)
                 header.Children.Add(label)
+                header.Children.Add(rgb)
 
                 Dim sliderR = createByteSlider(color.R)
                 Dim sliderG = createByteSlider(color.G)
@@ -90,6 +97,7 @@ Class MainWindow
                                              Dim newColor As Color = Color.FromArgb(255, CByte(sliderR.Value), CByte(sliderG.Value), CByte(sliderB.Value))
                                              setColor(newColor)
                                              swatchBrush.Color = newColor
+                                             rgb.Content = colorStr(newColor)
                                          End Sub
 
                 AddHandler sliderR.ValueChanged, sliderValueChanged
