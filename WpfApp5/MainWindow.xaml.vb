@@ -23,25 +23,21 @@ Class MainWindow
 
         Dim modelVisuals As ModelVisual3D = Nothing
 
-        Dim headlight As New DirectionalHeadLight() With {
-            .Brightness = 1.0
-        }
-        Viewport.Children.Add(headlight)
-
-        Dim dirLight As New DirectionalLight With {
+        Dim headlight As New DirectionalLight With {
             .Color = Colors.White,
             .Direction = V3(-1, 0, 0)
         }
-        Dim dirLightVisual As New ModelVisual3D With {
-            .Content = dirLight
+        Dim headlightVisual As New ModelVisual3D With {
+            .Content = headlight
         }
         AddHandler Viewport.Viewport.Camera.Changed,
             Sub(sender, e)
                 Dim camera = DirectCast(sender, PerspectiveCamera)
                 Dim lookDir = camera.LookDirection
                 lookDir.Normalize()
-                dirLight.Direction = lookDir
+                headlight.Direction = lookDir
             End Sub
+        Viewport.Children.Add(headlightVisual)
 
         Dim opt = GenOpt.Opt1
 
@@ -50,27 +46,31 @@ Class MainWindow
         Dim createSeparator = Function() New Separator() With {.Margin = New Thickness(10)}
         Dim createByteSlider = Function(value As Byte) New Slider() With {.Minimum = 0, .Maximum = 255, .Value = value}
 
-        Dim addColorSlider As Action(Of String, SolidColorBrush) =
-            Sub(name As String, brush As SolidColorBrush)
+        Dim addColorSlider =
+            Sub(name As String, getColor As Func(Of Color), setColor As Action(Of Color))
                 Dim stackPanel As New StackPanel() With {
                     .Margin = New Thickness(4)
                 }
+
+                Dim color = getColor()
+                Dim swatchBrush As New SolidColorBrush(color)
 
                 Dim header As New StackPanel() With {.Orientation = Orientation.Horizontal}
                 Dim label As New Label() With {.Content = name}
                 Dim swatch As New Rectangle() With {
                     .Width = 12,
                     .Height = 12,
-                    .Fill = brush,
+                    .Fill = swatchBrush,
                     .Stroke = Brushes.Black,
                     .StrokeThickness = 1
                 }
+
                 header.Children.Add(swatch)
                 header.Children.Add(label)
 
-                Dim sliderR = createByteSlider(brush.Color.R)
-                Dim sliderG = createByteSlider(brush.Color.G)
-                Dim sliderB = createByteSlider(brush.Color.B)
+                Dim sliderR = createByteSlider(color.R)
+                Dim sliderG = createByteSlider(color.G)
+                Dim sliderB = createByteSlider(color.B)
                 Dim checkbox As New CheckBox() With {
                     .Content = "Single Color",
                     .IsChecked = True
@@ -89,7 +89,8 @@ Class MainWindow
                                                  sliderB.Value = slider.Value
                                              End If
                                              Dim newColor As Color = Color.FromArgb(255, CByte(sliderR.Value), CByte(sliderG.Value), CByte(sliderB.Value))
-                                             brush.Color = newColor
+                                             setColor(newColor)
+                                             swatchBrush.Color = newColor
                                          End Sub
 
                 AddHandler sliderR.ValueChanged, sliderValueChanged
@@ -105,31 +106,15 @@ Class MainWindow
                 Tools.Children.Add(stackPanel)
             End Sub
 
-        addColorSlider("Diffuse", diffuseBrush)
-        addColorSlider("Emissive", emissiveBrush)
+        Dim addColorSliderBrush =
+            Sub(name As String, brush As SolidColorBrush)
+                addColorSlider(name, Function() brush.Color, Sub(newColor) brush.Color = newColor)
+            End Sub
 
-        If True Then
-            Dim stackPanel As New StackPanel()
-            Dim label As New Label() With {.Content = "Brightness"}
-            Dim slider As New Slider() With {
-                .Minimum = 0,
-                .Maximum = 1,
-                .Value = headlight.Brightness
-            }
+        addColorSliderBrush("Diffuse", diffuseBrush)
+        addColorSliderBrush("Emissive", diffuseBrush)
 
-            AddHandler slider.ValueChanged,
-                Sub()
-                    headlight.Brightness = slider.Value
-
-                    Dim value = CByte(slider.Value * 255)
-                    dirLight.Color = Color.FromArgb(255, value, value, value)
-                End Sub
-
-            stackPanel.Children.Add(label)
-            stackPanel.Children.Add(slider)
-            stackPanel.Children.Add(createSeparator())
-            Tools.Children.Add(stackPanel)
-        End If
+        addColorSlider("Headlight", Function() headlight.Color, Sub(newColor) headlight.Color = newColor)
 
         If True Then
             Dim stackPanel As New StackPanel()
@@ -332,46 +317,7 @@ Class MainWindow
             Tools.Children.Add(stackPanel)
         End If
 
-        If True Then
-            Dim stackPanel As New StackPanel
-
-            Dim addOpt =
-                Sub(name As String, isChecked As Boolean, showLightHelix As Boolean, showLightCustom As Boolean)
-                    Dim rad As New RadioButton With {
-                        .Content = name,
-                        .IsChecked = isChecked
-                    }
-
-                    Dim safeAddOrRemove = Sub(item As ModelVisual3D, addOrKeep As Boolean)
-                                              If addOrKeep Then
-                                                  If Not Viewport.Children.Contains(item) Then
-                                                      Viewport.Children.Add(item)
-                                                  End If
-                                              Else
-                                                  Viewport.Children.Remove(item)
-                                              End If
-                                          End Sub
-
-                    AddHandler rad.Checked, Sub()
-                                                safeAddOrRemove(headlight, showLightHelix)
-                                                safeAddOrRemove(dirLightVisual, showLightCustom)
-                                            End Sub
-                    stackPanel.Children.Add(rad)
-                End Sub
-
-            Dim containsHelix = Viewport.Children.Contains(headlight)
-            Dim containsCustom = Viewport.Children.Contains(dirLightVisual)
-
-            addOpt("None", Not containsHelix AndAlso Not containsCustom, False, False)
-            addOpt("Helix", containsHelix, True, False)
-            addOpt("Custom", containsCustom, False, True)
-            stackPanel.Children.Add(createSeparator())
-
-            Tools.Children.Add(stackPanel)
-        End If
-
         resetGeometry()
-
     End Sub
 
     Private ReadOnly c15024 As New CeeInfo() With {
