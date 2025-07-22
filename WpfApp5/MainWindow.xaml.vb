@@ -245,6 +245,17 @@ Class MainWindow
                     AddCee(posLists, opt, c15024, p1, p2, xdir)
                 End If
 
+                ' Convert from millimeters to meters to fix rendering artifacts
+                For Each posList In posLists
+                    For i = 0 To posList.Count - 1
+                        Dim pos = posList(i)
+                        pos.X /= 1000
+                        pos.Y /= 1000
+                        pos.Z /= 1000
+                        posList(i) = pos
+                    Next
+                Next
+
                 Dim modelGroup As New Model3DGroup
                 For Each posList In posLists
                     Dim mesh As New MeshGeometry3D() With {
