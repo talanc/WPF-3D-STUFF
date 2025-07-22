@@ -133,19 +133,11 @@ Class MainWindow
             AddHandler showFps.Checked, Sub() Viewport.ShowFrameRate = True
             AddHandler showFps.Unchecked, Sub() Viewport.ShowFrameRate = False
 
-            Dim clipToBounds As New CheckBox() With {
-                .Content = "Clip to bounds",
-                .IsChecked = Viewport.ClipToBounds
-            }
-            AddHandler clipToBounds.Checked, Sub() Viewport.ClipToBounds = True
-            AddHandler clipToBounds.Unchecked, Sub() Viewport.ClipToBounds = False
-
             stackPanel.Children.Add(numVertsLabel)
             stackPanel.Children.Add(numTrisLabel)
             stackPanel.Children.Add(numMeshLabel)
             stackPanel.Children.Add(geoTimeLabel)
             stackPanel.Children.Add(showFps)
-            stackPanel.Children.Add(clipToBounds)
             stackPanel.Children.Add(createSeparator())
             Tools.Children.Add(stackPanel)
         End If
@@ -343,8 +335,8 @@ Class MainWindow
                 End Sub
 
             addOpt(optMesh1, "All in one mesh", GenOpt.Opt1)
-            addOpt(optMesh2, "Many meshes", GenOpt.Opt2)
-            addOpt(optMesh3, "One mesh per triangle", GenOpt.Opt3)
+            addOpt(optMesh2, "Model meshes", GenOpt.Opt2)
+            addOpt(optMesh3, "Quad meshes", GenOpt.Opt3)
             stackPanel.Children.Add(createSeparator())
 
             Tools.Children.Add(stackPanel)
@@ -442,7 +434,15 @@ Class MainWindow
         Next
 
         Dim tri =
-            Sub(a As Integer, b As Integer, c As Integer)
+            Sub(posList As Point3DCollection, a As Integer, b As Integer, c As Integer)
+
+                posList.Add(positions(a))
+                posList.Add(positions(b))
+                posList.Add(positions(c))
+            End Sub
+
+        Dim quad =
+            Sub(a As Integer, b As Integer, c As Integer, d As Integer)
                 Dim posList As Point3DCollection
 
                 Select Case opt
@@ -453,7 +453,7 @@ Class MainWindow
                         posList = posLists.Last()
 
                     Case GenOpt.Opt3
-                        ' A new mesh for each triangle
+                        ' A new mesh for each quad
                         posList = New Point3DCollection
                         posLists.Add(posList)
 
@@ -461,15 +461,8 @@ Class MainWindow
                         Throw New InvalidOperationException($"Unknown opt value: {opt}")
                 End Select
 
-                posList.Add(positions(a))
-                posList.Add(positions(b))
-                posList.Add(positions(c))
-            End Sub
-
-        Dim quad =
-            Sub(a As Integer, b As Integer, c As Integer, d As Integer)
-                tri(b, c, a)
-                tri(d, a, c)
+                tri(posList, b, c, a)
+                tri(posList, d, a, c)
             End Sub
 
         ' bottom
